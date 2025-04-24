@@ -1,0 +1,65 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "selectedpkgs"
+dynamic = ["version"]
+description = ''
+readme = "README.md"
+requires-python = ">=3.8"
+license = "GPL-3.0-only"
+keywords = []
+authors = [
+  { name = "Michael Cox", email = "2.cox.michael@gmail.com" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+]
+dependencies = []
+
+[project.urls]
+Documentation = "https://github.com/michael-cox/selectedpkgs#readme"
+Issues = "https://github.com/michael-cox/selectedpkgs/issues"
+Source = "https://github.com/michael-cox/selectedpkgs"
+
+[project.scripts]
+selectedpkgs = "selectedpkgs.main:main"
+
+[tool.hatch.version]
+path = "src/selectedpkgs/__about__.py"
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/selectedpkgs tests}"
+
+[tool.coverage.run]
+source_pkgs = ["selectedpkgs", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/selectedpkgs/__about__.py",
+]
+
+[tool.coverage.paths]
+selectedpkgs = ["src/selectedpkgs", "*/selectedpkgs/src/selectedpkgs"]
+tests = ["tests", "*/selectedpkgs/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
