@@ -38,6 +38,11 @@ selectedpkgs = "selectedpkgs.main:main"
 [tool.hatch.version]
 path = "src/selectedpkgs/__about__.py"
 
+[tool.hatch.env]
+requires = [
+  "hatch-containers",
+]
+
 [tool.hatch.envs.types]
 extra-dependencies = [
   "mypy>=1.0.0",
@@ -63,3 +68,8 @@ exclude_lines = [
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
 ]
+
+[tool.hatch.envs.docked]
+type = "container"
+image = "python:bookworm"
+selectedpkgs = "selectedpkgs.main:main"
