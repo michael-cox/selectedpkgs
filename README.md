@@ -1,17 +1,13 @@
 # selectedpkgs
 
-[![PyPI - Version](https://img.shields.io/pypi/v/selectedpkgs.svg)](https://pypi.org/project/selectedpkgs)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/selectedpkgs.svg)](https://pypi.org/project/selectedpkgs)
-
------
-
-## Table of Contents
-
-- [Installation](#installation)
-- [License](#license)
+A python CLI utility to list user-installed packages on Debian 12 by parsing
+`/var/lib/dpkg/status`.
 
 ## Installation
 
 ```console
-pip install selectedpkgs
+pip install .
 ```
+
+## License
+Licensed with GPL-3. See [LICENSE.txt](./LICENSE.txt).
