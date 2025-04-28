@@ -117,7 +117,7 @@ def main():
     logger.addHandler(ch)
     logger.debug("logging initialized")
 
-    if not dpkg_status.exists():
+    if not dpkg_status.is_file():
         logger.error(f"{dpkg_status} does not exist")
         return 1
 
