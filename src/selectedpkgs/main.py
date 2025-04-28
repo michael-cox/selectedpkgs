@@ -15,6 +15,7 @@ pkg_name = re.compile(r"[a-zA-Z0-9-.]*")
 def get_args(args=None):
     parser = ArgumentParser(prog="selectedpkgs", description="gets user-installed packages in Debian 12 by parsing /var/lib/dpkg/status")
     parser.add_argument("-d", "--debug", action="store_true", help="enable debug logging")
+    parser.add_argument("-l", "--debug-logfile", help="set debug logfile")
     return parser.parse_args(args)
 
 class Package:
@@ -33,6 +34,7 @@ class Package:
     # parse a dependency line into a list of dependencies (w/o version annotations)
     def parse_dependencies(self, dependencies_line):
 
+        logger.debug(f"got dependency line: {dependencies_line}")
         # treat "|" as "," as we do not care in this case
         dependencies = dependencies_line.replace("|", ",").split(",")
 
@@ -60,8 +62,9 @@ class Package:
 
         pkg.parse_dependencies(props.get("Depends", ""))
 
-        return pkg
+        logger.debug(f"initialized pkg: {pkg}")
 
+        return pkg
 
 # buffer_to_props
 # ---
@@ -107,10 +110,16 @@ def main():
     ch.setLevel(logging.ERROR)
     formatter = logging.Formatter('%(levelname)s: %(message)s')
 
+    # setup debug logfile
+    if args.debug_logfile:
+        file_ch = logging.FileHandler(args.debug_logfile)
+        file_ch.setLevel(logging.DEBUG)
+        file_ch.setFormatter(formatter)
+        logger.addHandler(file_ch)
+
     # setup debug logging
     if args.debug:
         ch.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(levelname)s (%(name)s): %(message)s')
 
     # finish logging init
     ch.setFormatter(formatter)
