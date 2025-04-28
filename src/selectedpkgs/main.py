@@ -117,9 +117,9 @@ def parse_packages(file_path, delimiter="\n"):
     return pkgs, dependencies
 
 
-def main():
+def main(args=None):
 
-    args = get_args()
+    args = get_args(args)
 
     # init logging
     ch = logging.StreamHandler()
