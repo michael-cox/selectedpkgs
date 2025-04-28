@@ -26,6 +26,7 @@ def get_args(args=None):
         "-d", "--debug", action="store_true", help="enable debug logging"
     )
     parser.add_argument("-l", "--debug-logfile", help="set debug logfile")
+    parser.add_argument("--disable-dependency-checking", action="store_true", help="disable dependency checking")
     return parser.parse_args(args)
 
 
@@ -172,6 +173,9 @@ def main(args=None):
             not pkg.essential
             and pkg.priority != "required"
             and pkg.source == ""
-            and pkg.name not in dependencies
         ):
-            print(pkg.name)
+            if args.disable_dependency_checking:
+                print(pkg.name)
+            else:
+                if pkg.name not in dependencies:
+                    print(pkg.name)
