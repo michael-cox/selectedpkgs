@@ -78,3 +78,15 @@ selectedpkgs = "selectedpkgs.main:main"
 type = "container"
 image = "python:slim-bookworm"
 selectedpkgs = "selectedpkgs.main:main"
+
+[tool.hatch.envs.integration]
+type = "container"
+image = "python:slim-bookworm"
+dependencies = [
+  "pytest",
+  "pytest-mock",
+]
+selectedpkgs = "selectedpkgs.main:main"
+
+[tool.hatch.envs.integration.scripts]
+test = "pytest tests/integration -v"
