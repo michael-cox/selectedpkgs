@@ -1,0 +1,23 @@
+Source: selectedpkgs
+Section: python
+Priority: optional
+Maintainer: Michael Cox <2.cox.michael@gmail.com>
+Build-Depends:
+  debhelper,
+  debhelper-compat (= 13),
+  dh-python,
+  python3-all,
+  python3-hatchling,
+Standards-Version: 4.7.2.0
+Homepage: https://github.com/michael-cox/selectedpkgs
+Vcs-Browser: https://github.com/michael-cox/selectedpkgs
+Vcs-Git: https://github.com/michael-cox/selectedpkgs.git
+
+Package: selectedpkgs
+Architecture: any
+Depends:
+  ${python3:Depends},
+  ${misc:Depends}
+Description: A CLI tool to display user-installed packages
+ A Python CLI tool to display user-installed packages by parsing
+ /var/lib/dpkg/status.

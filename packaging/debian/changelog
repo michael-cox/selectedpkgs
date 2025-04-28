@@ -1,0 +1,6 @@
+selectedpkgs (1.0.0-1) UNRELEASED; urgency=medium
+
+  * Initial release.
+  * Packaged with Hatch and dh-virtualenv.
+
+ -- Michael Cox <2.cox.michael@gmail.com>  Mon, 28 Apr 2025 15:39:03 -0500
