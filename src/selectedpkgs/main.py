@@ -1,12 +1,17 @@
 import re
 from pathlib import Path
 from sys import stderr
+from argparse import ArgumentParser
 
 dpkg_status = Path("/var/lib/dpkg/status")
 
 # regex to match package names without (version)
 pkg_name = re.compile(r"[a-zA-Z0-9-.]*")
 
+def get_args(args=None):
+    parser = ArgumentParser(prog="selectedpkgs", description="gets user-installed packages in Debian 12 by parsing /var/lib/dpkg/status")
+    parser.add_argument("-d", "--debug", action="store_true", help="enable debug logging")
+    return parser.parse_args(args)
 
 class Package:
     def __init__(self, name, essential=False, priority="", source=""):
