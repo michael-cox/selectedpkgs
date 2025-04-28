@@ -25,6 +25,7 @@ class Package:
         self.priority = priority
         self.source = source
         self.dependencies = []
+        self.recommends = []
 
     def __repr__(self):
         return str(self.__dict__)
@@ -32,7 +33,7 @@ class Package:
     # parse_dependencies
     # ---
     # parse a dependency line into a list of dependencies (w/o version annotations)
-    def parse_dependencies(self, dependencies_line):
+    def parse_dependencies(self, dependencies_line, recommends=False):
 
         logger.debug(f"got dependency line: {dependencies_line}")
         # treat "|" as "," as we do not care in this case
@@ -41,7 +42,11 @@ class Package:
         for dependency in dependencies:
             name = pkg_name.search(dependency.strip()).group(0)
             if name:
-                self.dependencies.append(name)
+                if recommends:
+                    if name != self.source:
+                        self.recommends.append(name)
+                else:
+                    self.dependencies.append(name)
 
     # from_pkg_buffer
     # ---
@@ -61,6 +66,7 @@ class Package:
         )
 
         pkg.parse_dependencies(props.get("Depends", ""))
+        pkg.parse_dependencies(props.get("Recommends", ""), recommends=True)
 
         logger.debug(f"initialized pkg: {pkg}")
 
@@ -95,6 +101,8 @@ def parse_packages(file_path, delimiter="\n"):
                 pkgs.append(pkg)
                 if len(pkg.dependencies):
                     dependencies |= set(pkg.dependencies)
+                if len(pkg.recommends):
+                    dependencies |= set(pkg.recommends)
                 pkg_buffer = []
             else:
                 pkg_buffer.append(line)
