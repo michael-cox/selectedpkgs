@@ -1,9 +1,13 @@
 import re
+import logging
 from pathlib import Path
 from sys import stderr
 from argparse import ArgumentParser
 
 dpkg_status = Path("/var/lib/dpkg/status")
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 # regex to match package names without (version)
 pkg_name = re.compile(r"[a-zA-Z0-9-.]*")
@@ -95,9 +99,27 @@ def parse_packages(file_path, delimiter="\n"):
 
 
 def main():
+
+    args = get_args()
+
+    # init logging
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.ERROR)
+    formatter = logging.Formatter('%(levelname)s: %(message)s')
+
+    # setup debug logging
+    if args.debug:
+        ch.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(levelname)s (%(name)s): %(message)s')
+
+    # finish logging init
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+    logger.debug("logging initialized")
+
     if not dpkg_status.exists():
-        print(f"{dpkg_status} doesn't exist", file=stderr)
-        return
+        logger.error(f"{dpkg_status} does not exist")
+        return 1
 
     pkgs, dependencies = parse_packages(dpkg_status)
 
