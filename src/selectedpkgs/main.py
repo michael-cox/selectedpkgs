@@ -12,11 +12,18 @@ logger.setLevel(logging.DEBUG)
 # regex to match package names without (version)
 pkg_name = re.compile(r"[a-zA-Z0-9-.]*")
 
+
 def get_args(args=None):
-    parser = ArgumentParser(prog="selectedpkgs", description="gets user-installed packages in Debian 12 by parsing /var/lib/dpkg/status")
-    parser.add_argument("-d", "--debug", action="store_true", help="enable debug logging")
+    parser = ArgumentParser(
+        prog="selectedpkgs",
+        description="gets user-installed packages in Debian 12 by parsing /var/lib/dpkg/status",
+    )
+    parser.add_argument(
+        "-d", "--debug", action="store_true", help="enable debug logging"
+    )
     parser.add_argument("-l", "--debug-logfile", help="set debug logfile")
     return parser.parse_args(args)
+
 
 class Package:
     def __init__(self, name, essential=False, priority="", source=""):
@@ -72,6 +79,7 @@ class Package:
 
         return pkg
 
+
 # buffer_to_props
 # ---
 # converts lines in a buffer from "Key: Value" to a dict.
@@ -116,7 +124,7 @@ def main():
     # init logging
     ch = logging.StreamHandler()
     ch.setLevel(logging.ERROR)
-    formatter = logging.Formatter('%(levelname)s: %(message)s')
+    formatter = logging.Formatter("%(levelname)s: %(message)s")
 
     # setup debug logfile
     if args.debug_logfile:
