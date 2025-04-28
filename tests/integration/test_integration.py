@@ -7,6 +7,7 @@ dpkg_status = Path("/var/lib/dpkg/status")
 packages = ["vim", "curl", "cowsay", "tmux", "unzip"]
 
 
+# install packages
 @pytest.fixture(scope="module")
 def install_packages():
     subprocess.run(["apt", "update"], check=True)
@@ -15,6 +16,7 @@ def install_packages():
     )
 
 
+# test that selectedpkgs finds installed packages
 @pytest.mark.skipif(not dpkg_status.is_file, reason="Requires Debian")
 def test_selectedpkgs(install_packages, capsys):
     main(args=[])
