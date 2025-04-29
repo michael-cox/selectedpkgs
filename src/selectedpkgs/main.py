@@ -67,6 +67,14 @@ class Package:
                         self.recommends.append(name)
                 else:
                     self.dependencies.append(name)
+    
+    # is_required
+    # --------
+    # check if a pkg is required
+    def is_required(self):
+        if not self.essential and self.priority != "required" and self.source == "":
+            return False
+        return True
 
     # from_pkg_buffer
     # --------
@@ -133,7 +141,6 @@ def parse_packages(file_path, delimiter="\n"):
             else:
                 pkg_buffer.append(line)
     return pkgs, dependencies
-
 
 def main(args=None):
 
