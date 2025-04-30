@@ -27,11 +27,6 @@ def get_args(args=None):
         "-d", "--debug", action="store_true", help="enable debug logging"
     )
     parser.add_argument("-l", "--debug-logfile", help="set debug logfile")
-    parser.add_argument(
-        "--disable-dependency-checking",
-        action="store_true",
-        help="disable dependency checking",
-    )
     return parser.parse_args(args)
 
 
@@ -44,34 +39,9 @@ class Package:
         self.essential = essential
         self.priority = priority
         self.source = source
-        self.dependencies = []
-        self.recommends = []
 
     def __repr__(self):
         return str(self.__dict__)
-
-    # parse_dependencies
-    # --------
-    # parse a dependency line into a list of dependencies (w/o version annotations)
-    def parse_dependencies(self, dependencies_line, recommends=False):
-
-        logger.debug(f"got dependency line: {dependencies_line}")
-
-        # treat "|" as "," as we do not care in this case
-        dependencies = dependencies_line.replace("|", ",").split(",")
-
-        for dependency in dependencies:
-
-            # remove version annotations from package name as we don't care
-            name = pkg_name.search(dependency.strip()).group(0)
-
-            if name:  # split() will return a "" element - make sure these aren't added
-                if recommends:
-                    # ensure recommend isn't cyclical
-                    if name != self.source:
-                        self.recommends.append(name)
-                else:
-                    self.dependencies.append(name)
 
     # is_required
     # --------
@@ -102,10 +72,6 @@ class Package:
             props.get("Source", ""),
         )
 
-        # add dependencies
-        pkg.parse_dependencies(props.get("Depends", ""))
-        pkg.parse_dependencies(props.get("Recommends", ""), recommends=True)
-
         logger.debug(f"initialized pkg: {pkg}")
 
         return pkg
@@ -127,10 +93,9 @@ def buffer_to_props(buffer):
 # parse_packages
 # --------
 # parses file_path to a list of packages and a list of all dependencies
-def parse_packages(file_path, delimiter="\n", disable_dependency_checking=False):
+def parse_packages(file_path, delimiter="\n"):
 
     pkgs = []
-    dependencies = set()
     pkg_buffer = []
 
     with open(file_path, "r") as f:
@@ -139,19 +104,11 @@ def parse_packages(file_path, delimiter="\n", disable_dependency_checking=False)
                 pkg = Package.from_pkg_buffer(pkg_buffer)
                 pkgs.append(pkg)
 
-                if not disable_dependency_checking:
-
-                    # add dependencies and recommends as dependencies - in our case we don't care to distinguish
-                    if len(pkg.dependencies):
-                        dependencies |= set(pkg.dependencies)
-                    if len(pkg.recommends):
-                        dependencies |= set(pkg.recommends)
-
                 # reset buffer
                 pkg_buffer = []
             else:
                 pkg_buffer.append(line)
-    return pkgs, dependencies
+    return pkgs
 
 
 def main(args=None):
@@ -184,15 +141,9 @@ def main(args=None):
         logger.error(f"{dpkg_status} is not a file")
         return 1
 
-    pkgs, dependencies = parse_packages(
-        dpkg_status, disable_dependency_checking=args.disable_dependency_checking
-    )
+    pkgs = parse_packages(dpkg_status)
 
     # print what should be user-installed packages
     for pkg in pkgs:
         if not pkg.is_required():
-            if args.disable_dependency_checking:
-                print(pkg.name)
-            else:
-                if pkg.name not in dependencies:
-                    print(pkg.name)
+            print(pkg.name)
