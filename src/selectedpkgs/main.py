@@ -1,10 +1,12 @@
 import re
 import logging
+import queue
 from pathlib import Path
 from sys import stderr
 from argparse import ArgumentParser
 
 dpkg_status = Path("/var/lib/dpkg/status")
+auto_installed_priorities = ["required", "important", "standard"]
 
 # setup logging
 logger = logging.getLogger(__name__)
@@ -72,7 +74,7 @@ class Package:
     # --------
     # check if a pkg is required
     def is_required(self):
-        if not self.essential and self.priority != "required" and self.source == "":
+        if not self.essential and self.priority not in auto_installed_priorities and self.source == "":
             return False
         return True
     
@@ -80,15 +82,18 @@ class Package:
     # --------
     # resolve each dependency from a string to the package it references
     def resolve_dependencies(self, packages):
-        for idx, dependency in self.dependencies:
+
+        # resolve dependencies
+        for idx, dependency in enumerate(self.dependencies):
             self.dependencies[idx] = packages.get(dependency, dependency)
             if self.dependencies[idx] == dependency:
-                logger.warning(f"unable to find {self.name}'s dependency {dependency}")
-        for idx, recommend in self.recommends:
+                logger.info(f"unable to find {self.name}'s dependency {dependency}")
+
+        # resolve recommends
+        for idx, recommend in enumerate(self.recommends):
             self.recommends[idx] = packages.get(recommend, recommend)
             if self.recommends[idx] == recommend:
-                logger.warning(f"unable to find {self.name}'s recommend {recommend}")
-
+                logger.info(f"unable to find {self.name}'s recommend {recommend}")
 
     # from_pkg_buffer
     # --------
@@ -115,7 +120,6 @@ class Package:
 
         return pkg
 
-
 # buffer_to_props
 # --------
 # converts lines in a buffer from "Key: Value" to a dict.
@@ -128,14 +132,13 @@ def buffer_to_props(buffer):
             props[split_line[0]] = "".join(split_line[1:]).strip()
     return props
 
-
 # parse_packages
 # --------
 # parses file_path to a list of packages and a list of all dependencies
 def parse_packages(file_path, delimiter="\n"):
 
     pkgs = {}
-    dependencies = set()
+    dependencies = {}
     pkg_buffer = []
 
     with open(file_path, "r") as f:
@@ -146,19 +149,47 @@ def parse_packages(file_path, delimiter="\n"):
 
                 # add dependencies and recommends as dependencies - in our case we don't care which
                 if len(pkg.dependencies):
-                    dependencies |= set(pkg.dependencies)
+                    dependencies[pkg.name] = set(pkg.dependencies)
                 if len(pkg.recommends):
-                    dependencies |= set(pkg.recommends)
+                    if pkg.name in dependencies:
+                        dependencies[pkg.name] |= set(pkg.recommends)
+                    else:
+                        dependencies[pkg.name] = set(pkg.recommends)
 
                 # reset buffer
                 pkg_buffer = []
             else:
                 pkg_buffer.append(line)
     
-    for pkg in pkgs.values:
+    # second pass to resolve dependencies
+    for pkg in pkgs.values():
         pkg.resolve_dependencies(pkgs)
 
     return pkgs, dependencies
+
+# get_selected_set
+# --------
+# 
+def get_selected_set(pkgs, dependencies):
+    selected_set = set()
+
+    to_process = queue.Queue()
+    for pkg in pkgs.values(): to_process.put(pkg)
+
+    while not to_process.empty():
+        pkg = to_process.get()
+        if not pkg.is_required() and pkg.name not in dependencies.values():
+            selected_set.add(pkg)
+            if pkg.name in dependencies:
+                del dependencies[pkg.name]
+            for depend in pkg.dependencies:
+                if isinstance(depend, Package):
+                    to_process.put(depend)
+            for recommend in pkg.recommends:
+                if isinstance(recommend, Package):
+                    to_process.put(recommend)
+    
+    return selected_set
 
 def main(args=None):
 
@@ -166,7 +197,7 @@ def main(args=None):
 
     # init logging
     ch = logging.StreamHandler()
-    ch.setLevel(logging.ERROR)
+    ch.setLevel(logging.WARNING)
     formatter = logging.Formatter("%(levelname)s: %(message)s")
 
     # setup debug logfile
@@ -192,15 +223,11 @@ def main(args=None):
 
     pkgs, dependencies = parse_packages(dpkg_status)
 
-    # print what should be user-installed packages
-    for pkg in pkgs.values:
-        if (
-            not pkg.essential
-            and pkg.priority != "required"
-            and pkg.source == ""
-        ):
-            if args.disable_dependency_checking:
-                print(pkg.name)
-            else:
-                if pkg.name not in dependencies:
-                    print(pkg.name)
+    # get packages that are not required or depended upon
+    initial_packages = { key: pkg for key, pkg in pkgs.items() if not pkg.is_required() and pkg.name not in dependencies.values() }
+    logger.debug(f"got initial pkgs: {initial_packages.keys()}")
+
+    # get initial package dependencies that are not required or depended by other packages
+    selected_set = get_selected_set(initial_packages, dependencies)
+
+    for pkg in sorted([pkg.name for pkg in selected_set]): print(pkg)
