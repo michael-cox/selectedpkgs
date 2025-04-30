@@ -6,7 +6,7 @@ from sys import stderr
 from argparse import ArgumentParser
 
 dpkg_status = Path("/var/lib/dpkg/status")
-auto_installed_priorities = ["required", "important", "standard"]
+auto_installed_priorities = ["required", "important"]
 
 # setup logging
 logger = logging.getLogger(__name__)
@@ -135,7 +135,7 @@ def buffer_to_props(buffer):
 # parse_packages
 # --------
 # parses file_path to a list of packages and a list of all dependencies
-def parse_packages(file_path, delimiter="\n"):
+def parse_packages(file_path, delimiter="\n", disable_dependency_checking=False):
 
     pkgs = {}
     dependencies = {}
@@ -147,23 +147,25 @@ def parse_packages(file_path, delimiter="\n"):
                 pkg = Package.from_pkg_buffer(pkg_buffer)
                 pkgs[pkg.name] = pkg
 
-                # add dependencies and recommends as dependencies - in our case we don't care which
-                if len(pkg.dependencies):
-                    dependencies[pkg.name] = set(pkg.dependencies)
-                if len(pkg.recommends):
-                    if pkg.name in dependencies:
-                        dependencies[pkg.name] |= set(pkg.recommends)
-                    else:
-                        dependencies[pkg.name] = set(pkg.recommends)
+                if not disable_dependency_checking:
+                    # add dependencies and recommends as dependencies - in our case we don't care which
+                    if len(pkg.dependencies):
+                        dependencies[pkg.name] = set(pkg.dependencies)
+                    if len(pkg.recommends):
+                        if pkg.name in dependencies:
+                            dependencies[pkg.name] |= set(pkg.recommends)
+                        else:
+                            dependencies[pkg.name] = set(pkg.recommends)
 
                 # reset buffer
                 pkg_buffer = []
             else:
                 pkg_buffer.append(line)
     
-    # second pass to resolve dependencies
-    for pkg in pkgs.values():
-        pkg.resolve_dependencies(pkgs)
+    if not disable_dependency_checking:
+        # second pass to resolve dependencies
+        for pkg in pkgs.values():
+            pkg.resolve_dependencies(pkgs)
 
     return pkgs, dependencies
 
@@ -221,11 +223,19 @@ def main(args=None):
         logger.error(f"{dpkg_status} is not a file")
         return 1
 
-    pkgs, dependencies = parse_packages(dpkg_status)
+    if args.disable_dependency_checking:
+        logger.debug("dependency checking disabled")
+
+    pkgs, dependencies = parse_packages(dpkg_status, disable_dependency_checking=args.disable_dependency_checking)
 
     # get packages that are not required or depended upon
     initial_packages = { key: pkg for key, pkg in pkgs.items() if not pkg.is_required() and pkg.name not in dependencies.values() }
     logger.debug(f"got initial pkgs: {initial_packages.keys()}")
+
+    if args.disable_dependency_checking:
+        for pkg in sorted([pkg for pkg in initial_packages.keys()]):
+            print(pkg)
+        return
 
     # get initial package dependencies that are not required or depended by other packages
     selected_set = get_selected_set(initial_packages, dependencies)
