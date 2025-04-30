@@ -27,7 +27,11 @@ def get_args(args=None):
         "-d", "--debug", action="store_true", help="enable debug logging"
     )
     parser.add_argument("-l", "--debug-logfile", help="set debug logfile")
-    parser.add_argument("--disable-dependency-checking", action="store_true", help="disable dependency checking")
+    parser.add_argument(
+        "--disable-dependency-checking",
+        action="store_true",
+        help="disable dependency checking",
+    )
     return parser.parse_args(args)
 
 
@@ -73,7 +77,11 @@ class Package:
     # --------
     # check if a package is required by source, priority, essential
     def is_required(self):
-        if not self.essential and self.priority not in auto_installed_priorities and self.source == "":
+        if (
+            not self.essential
+            and self.priority not in auto_installed_priorities
+            and self.source == ""
+        ):
             return False
         return True
 
@@ -101,6 +109,7 @@ class Package:
         logger.debug(f"initialized pkg: {pkg}")
 
         return pkg
+
 
 # buffer_to_props
 # --------
@@ -131,7 +140,8 @@ def parse_packages(file_path, delimiter="\n", disable_dependency_checking=False)
                 pkgs.append(pkg)
 
                 if not disable_dependency_checking:
-                    # add dependencies and recommends as dependencies - in our case we don't care which
+
+                    # add dependencies and recommends as dependencies - in our case we don't care to distinguish
                     if len(pkg.dependencies):
                         dependencies |= set(pkg.dependencies)
                     if len(pkg.recommends):
@@ -174,7 +184,9 @@ def main(args=None):
         logger.error(f"{dpkg_status} is not a file")
         return 1
 
-    pkgs, dependencies = parse_packages(dpkg_status, disable_dependency_checking=args.disable_dependency_checking)
+    pkgs, dependencies = parse_packages(
+        dpkg_status, disable_dependency_checking=args.disable_dependency_checking
+    )
 
     # print what should be user-installed packages
     for pkg in pkgs:
