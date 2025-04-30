@@ -75,6 +75,20 @@ class Package:
         if not self.essential and self.priority != "required" and self.source == "":
             return False
         return True
+    
+    # resolve_dependencies
+    # --------
+    # resolve each dependency from a string to the package it references
+    def resolve_dependencies(self, packages):
+        for idx, dependency in self.dependencies:
+            self.dependencies[idx] = packages.get(dependency, dependency)
+            if self.dependencies[idx] == dependency:
+                logger.warning(f"unable to find {self.name}'s dependency {dependency}")
+        for idx, recommend in self.recommends:
+            self.recommends[idx] = packages.get(recommend, recommend)
+            if self.recommends[idx] == recommend:
+                logger.warning(f"unable to find {self.name}'s recommend {recommend}")
+
 
     # from_pkg_buffer
     # --------
@@ -120,7 +134,7 @@ def buffer_to_props(buffer):
 # parses file_path to a list of packages and a list of all dependencies
 def parse_packages(file_path, delimiter="\n"):
 
-    pkgs = []
+    pkgs = {}
     dependencies = set()
     pkg_buffer = []
 
@@ -128,7 +142,7 @@ def parse_packages(file_path, delimiter="\n"):
         for line in f:
             if line == delimiter:
                 pkg = Package.from_pkg_buffer(pkg_buffer)
-                pkgs.append(pkg)
+                pkgs[pkg.name] = pkg
 
                 # add dependencies and recommends as dependencies - in our case we don't care which
                 if len(pkg.dependencies):
@@ -140,6 +154,10 @@ def parse_packages(file_path, delimiter="\n"):
                 pkg_buffer = []
             else:
                 pkg_buffer.append(line)
+    
+    for pkg in pkgs.values:
+        pkg.resolve_dependencies(pkgs)
+
     return pkgs, dependencies
 
 def main(args=None):
@@ -175,7 +193,7 @@ def main(args=None):
     pkgs, dependencies = parse_packages(dpkg_status)
 
     # print what should be user-installed packages
-    for pkg in pkgs:
+    for pkg in pkgs.values:
         if (
             not pkg.essential
             and pkg.priority != "required"
