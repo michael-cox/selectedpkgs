@@ -171,12 +171,6 @@ def parse_packages(file_path, delimiter="\n", disable_dependency_checking=False)
                     # add dependencies and recommends as dependencies - in our case we don't care which
                     if len(pkg.dependencies):
                         dependencies[pkg.name] = set(pkg.dependencies)
-                    if pkg.name == "libsystemd0":
-                        logger.debug("HERE<--------------------------------")
-                        logger.debug("HERE<--------------------------------")
-                        logger.debug("HERE<--------------------------------")
-                        logger.debug("HERE<--------------------------------")
-                        logger.debug(f"libsystemd0 dependencies: {pkg.dependencies}")
                     if len(pkg.recommends):
                         if pkg.name in dependencies:
                             dependencies[pkg.name] |= set(pkg.recommends)
