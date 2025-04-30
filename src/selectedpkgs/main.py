@@ -4,6 +4,7 @@ import queue
 from pathlib import Path
 from sys import stderr
 from argparse import ArgumentParser
+from itertools import chain
 
 dpkg_status = Path("/var/lib/dpkg/status")
 auto_installed_priorities = ["required", "important"]
@@ -28,6 +29,7 @@ def get_args(args=None):
         "-d", "--debug", action="store_true", help="enable debug logging"
     )
     parser.add_argument("-l", "--debug-logfile", help="set debug logfile")
+    parser.add_argument("-s", "--surface-dependency-checking", action="store_true", help="enable surface dependency checking")
     parser.add_argument("--disable-dependency-checking", action="store_true", help="disable dependency checking")
     return parser.parse_args(args)
 
@@ -74,7 +76,8 @@ class Package:
     # --------
     # check if a pkg is required
     def is_required(self):
-        if not self.essential and self.priority not in auto_installed_priorities and self.source == "":
+        logger.debug(f"@{self.name}.is_required: essential: {self.essential}, priority: {self.priority}, source: {self.source}")
+        if not self.essential and self.priority not in auto_installed_priorities and (self.source == "" or self.name in self.source):
             return False
         return True
     
@@ -151,6 +154,12 @@ def parse_packages(file_path, delimiter="\n", disable_dependency_checking=False)
                     # add dependencies and recommends as dependencies - in our case we don't care which
                     if len(pkg.dependencies):
                         dependencies[pkg.name] = set(pkg.dependencies)
+                    if pkg.name == "libsystemd0":
+                        logger.debug("HERE<--------------------------------")
+                        logger.debug("HERE<--------------------------------")
+                        logger.debug("HERE<--------------------------------")
+                        logger.debug("HERE<--------------------------------")
+                        logger.debug(f"libsystemd0 dependencies: {pkg.dependencies}")
                     if len(pkg.recommends):
                         if pkg.name in dependencies:
                             dependencies[pkg.name] |= set(pkg.recommends)
@@ -180,7 +189,12 @@ def get_selected_set(pkgs, dependencies):
 
     while not to_process.empty():
         pkg = to_process.get()
-        if not pkg.is_required() and pkg.name not in dependencies.values():
+        logger.debug(f"processing: {pkg.name}")
+        logger.debug(f"is_required: {pkg.is_required()}, in dependencies: {pkg.name in chain(*dependencies.values())}")
+        for parent, depends in dependencies.items():
+            if pkg.name in depends:
+                logger.debug('in pkg: {parent}')
+        if not pkg.is_required() and pkg.name not in chain(*dependencies.values()):
             selected_set.add(pkg)
             if pkg.name in dependencies:
                 del dependencies[pkg.name]
@@ -229,10 +243,10 @@ def main(args=None):
     pkgs, dependencies = parse_packages(dpkg_status, disable_dependency_checking=args.disable_dependency_checking)
 
     # get packages that are not required or depended upon
-    initial_packages = { key: pkg for key, pkg in pkgs.items() if not pkg.is_required() and pkg.name not in dependencies.values() }
+    initial_packages = { key: pkg for key, pkg in pkgs.items() if not pkg.is_required() and pkg.name not in chain(*dependencies.values()) }
     logger.debug(f"got initial pkgs: {initial_packages.keys()}")
 
-    if args.disable_dependency_checking:
+    if args.disable_dependency_checking or args.surface_dependency_checking:
         for pkg in sorted([pkg for pkg in initial_packages.keys()]):
             print(pkg)
         return
