@@ -5,6 +5,7 @@ from sys import stderr
 from argparse import ArgumentParser
 
 dpkg_status = Path("/var/lib/dpkg/status")
+auto_installed_priorities = ["required", "important"]
 
 # setup logging
 logger = logging.getLogger(__name__)
@@ -68,6 +69,14 @@ class Package:
                 else:
                     self.dependencies.append(name)
 
+    # is_required
+    # --------
+    # check if a package is required by source, priority, essential
+    def is_required(self):
+        if not self.essential and self.priority not in auto_installed_priorities and self.source == "":
+            return False
+        return True
+
     # from_pkg_buffer
     # --------
     # factory method to instantiate packages from list of lines
@@ -93,7 +102,6 @@ class Package:
 
         return pkg
 
-
 # buffer_to_props
 # --------
 # converts lines in a buffer from "Key: Value" to a dict.
@@ -110,7 +118,7 @@ def buffer_to_props(buffer):
 # parse_packages
 # --------
 # parses file_path to a list of packages and a list of all dependencies
-def parse_packages(file_path, delimiter="\n"):
+def parse_packages(file_path, delimiter="\n", disable_dependency_checking=False):
 
     pkgs = []
     dependencies = set()
@@ -122,11 +130,12 @@ def parse_packages(file_path, delimiter="\n"):
                 pkg = Package.from_pkg_buffer(pkg_buffer)
                 pkgs.append(pkg)
 
-                # add dependencies and recommends as dependencies - in our case we don't care which
-                if len(pkg.dependencies):
-                    dependencies |= set(pkg.dependencies)
-                if len(pkg.recommends):
-                    dependencies |= set(pkg.recommends)
+                if not disable_dependency_checking:
+                    # add dependencies and recommends as dependencies - in our case we don't care which
+                    if len(pkg.dependencies):
+                        dependencies |= set(pkg.dependencies)
+                    if len(pkg.recommends):
+                        dependencies |= set(pkg.recommends)
 
                 # reset buffer
                 pkg_buffer = []
@@ -165,15 +174,11 @@ def main(args=None):
         logger.error(f"{dpkg_status} is not a file")
         return 1
 
-    pkgs, dependencies = parse_packages(dpkg_status)
+    pkgs, dependencies = parse_packages(dpkg_status, disable_dependency_checking=args.disable_dependency_checking)
 
     # print what should be user-installed packages
     for pkg in pkgs:
-        if (
-            not pkg.essential
-            and pkg.priority != "required"
-            and pkg.source == ""
-        ):
+        if not pkg.is_required():
             if args.disable_dependency_checking:
                 print(pkg.name)
             else:
